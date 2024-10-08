@@ -11,7 +11,7 @@ window.onload = () => {
     ctxt = canvas.getContext("2d");
 
 
-    graph = new Graph(5, 3);
+    graph = new Graph(20, 10);
 
     loop();
 }
@@ -35,7 +35,7 @@ class Graph {
 
         for (let i = 0; i < n; i++) {
             let parentIndex = Math.floor(Math.random() * (this.nodes.length + 1)) - 1;
-            this.nodes.push(new GraphNode(this.nodes[parentIndex]));
+            this.nodes.push(new GraphNode(i, this.nodes[parentIndex]));
         }
 
         for (let i = 0; i < crossConnectionCount; i++) {
@@ -60,31 +60,43 @@ class Graph {
     }
 
     computeNumbering() {
-        // bottom up
-        let queue = this.nodes.filter((n) => n.children.length === 0);
-        let visited = new Set();
+        let j = 0;
+        for(let i=0;i<this.nodes.length;i++) {
+            if(this.nodes[i].parents.length !== 0) {
+                continue;
+            }
 
-        let number = this.nodes.length - 1;
-        while (queue.length > 0) {
-            let next = queue.shift();
-            next.number = number;
-            number--;
+            // put trivial nodes at start
+            let temp = this.nodes[i];
+            this.nodes[i] = this.nodes[j];
+            this.nodes[j] = temp;
+            console.log(this.nodes[j].parents.length)
+            j++;
+        }
+        let visits = {};
+        for(let node of this.nodes) {
+            visits[node.id] = 0;
+        }
+        for(let i=0;i<this.nodes.length;i++) {
+            for(let node of this.nodes[i].children) {
+                visits[node.id]++;
 
-            for (let node of next.parents) {
-                if (visited.has(node)) {
+                if(visits[node.id] !== node.parents.length) {
                     continue;
                 }
 
-                queue.push(node);
-                visited.add(node);
+                // since this is done all in-place the index must be searched
+                let k = this.nodes.findIndex((n) => n === node);
+
+                let temp = this.nodes[k];
+                this.nodes[k] = this.nodes[j];
+                this.nodes[j] = temp;
+                j++;
             }
         }
 
-        // top down
-        queue = this.nodes.filter((n) => n.parents.length === 0);
-        while (queue.length > 0) {
-            // TODO
-            break
+        for(let i=0;i<this.nodes.length;i++) {
+            this.nodes[i].number = i;
         }
     }
 
@@ -131,7 +143,9 @@ class Graph {
 }
 
 class GraphNode {
-    constructor(parent) {
+    constructor(id, parent) {
+        // id is used for hashing (`number` is being shown, not `id`)
+        this.id = id;
         if (parent) {
             this.parents = [parent];
             parent.addChild(this);
